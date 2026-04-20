@@ -39,7 +39,7 @@ st.title("📡 台股即時本益比 | 雲端戰術面板")
 # 2. 雲端環境與金鑰設定 (已為你自動填入)
 # ==========================================
 FUGLE_API_KEY = "NGJjYzIxZjgtMGIzNS00MzAzLTk5ZGQtZjNkMTQ3MjI0ZDNiIGYxM2I0ODk5LTYxZDEtNDA3ZS04ZDhjLWVkMDUyNjkzNjc5OA=="
-DRIVE_FILE_ID = "18tsyJeKzyEmWHLUG7OYdpdhWHFeMLdSz"  
+DRIVE_FILE_ID = "1IRZIDCv526ev3Oe3UXNFZ6-xpWf0sQlz"  
 
 # ==========================================
 # 3. 核心邏輯函式
