@@ -82,6 +82,10 @@ def get_fugle_realtime_prices(symbols):
     
     progress_bar = st.progress(0)
     status_text = st.empty()
+    
+    # 💡 新增：用來顯示警告訊息的專屬區塊
+    warning_text = st.empty() 
+    
     total = len(symbols)
     
     for i, symbol in enumerate(symbols):
@@ -90,16 +94,30 @@ def get_fugle_realtime_prices(symbols):
             symbol_str = str(symbol).split('.')[0].strip()
             quote = stock.intraday.quote(symbol=symbol_str)
             
-            # 💡 升級版抓價邏輯：優先抓最新成交價，若無成交則抓昨日收盤價
             price = quote.get('lastPrice', quote.get('closePrice', quote.get('previousClose', None)))
             
             if price is not None:
                 prices[symbol_str] = price
-        except Exception:
-            pass 
+                
+        except Exception as e:
+            error_msg = str(e)
+            
+            # 💡 【智能冷卻判斷】：偵測是否包含 429 頻率限制代碼
+            if "429" in error_msg or "Too Many Requests" in error_msg:
+                # 在網頁上打出黃色警報
+                warning_text.warning(f"⚠️ 觸發 API 防禦機制！系統進入強制冷卻 3 秒... (卡在代碼 {symbol})")
+                
+                # 強制讓程式睡 3 秒鐘，等待富果伺服器氣消
+                time.sleep(3) 
+                
+                # 氣消後把警報消除，繼續嘗試下一檔
+                warning_text.empty() 
+            else:
+                # 其他錯誤（例如代碼真的不存在），就只在後台印出，不干擾網頁
+                print(f"⚠️ 無法獲取 {symbol} 報價，原因: {error_msg}")
             
         progress_bar.progress((i + 1) / total)
-        time.sleep(0.02) # 稍微抓一點安全間隔，避免被 API 擋下
+        time.sleep(0.02) 
         
     status_text.empty()
     progress_bar.empty()
