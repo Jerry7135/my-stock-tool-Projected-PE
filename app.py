@@ -82,42 +82,48 @@ def get_fugle_realtime_prices(symbols):
     
     progress_bar = st.progress(0)
     status_text = st.empty()
-    
-    # 💡 新增：用來顯示警告訊息的專屬區塊
     warning_text = st.empty() 
     
     total = len(symbols)
     
     for i, symbol in enumerate(symbols):
         status_text.text(f"📡 鎖定目標 {symbol} 擷取即時戰況... ({i+1}/{total})")
-        try:
-            symbol_str = str(symbol).split('.')[0].strip()
-            quote = stock.intraday.quote(symbol=symbol_str)
-            
-            price = quote.get('lastPrice', quote.get('closePrice', quote.get('previousClose', None)))
-            
-            if price is not None:
-                prices[symbol_str] = price
+        
+        symbol_str = str(symbol).split('.')[0].strip()
+        
+        # 💡 【裝甲防護】：最高嘗試 3 次，確保被擋的股票不會被漏掉
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                # 請求報價
+                quote = stock.intraday.quote(symbol=symbol_str)
+                price = quote.get('lastPrice', quote.get('closePrice', quote.get('previousClose', None)))
                 
-        except Exception as e:
-            error_msg = str(e)
-            
-            # 💡 【智能冷卻判斷】：偵測是否包含 429 頻率限制代碼
-            if "429" in error_msg or "Too Many Requests" in error_msg:
-                # 在網頁上打出黃色警報
-                warning_text.warning(f"⚠️ 觸發 API 防禦機制！系統進入強制冷卻 3 秒... (卡在代碼 {symbol})")
+                if price is not None:
+                    prices[symbol_str] = price
                 
-                # 強制讓程式睡 3 秒鐘，等待富果伺服器氣消
-                time.sleep(3) 
+                # 🎯 成功抓到價格，立刻跳出重試迴圈 (break)
+                break 
                 
-                # 氣消後把警報消除，繼續嘗試下一檔
-                warning_text.empty() 
-            else:
-                # 其他錯誤（例如代碼真的不存在），就只在後台印出，不干擾網頁
-                print(f"⚠️ 無法獲取 {symbol} 報價，原因: {error_msg}")
-            
+            except Exception as e:
+                error_msg = str(e)
+                
+                # 判斷是否為流量限制 (429)
+                if "429" in error_msg or "Too Many Requests" in error_msg:
+                    warning_text.warning(f"⚠️ 遭遇 API 流量管制！冷卻 3 秒後重新鎖定 {symbol}... (重試 {attempt+1}/{max_retries})")
+                    time.sleep(3) # 休息 3 秒再戰
+                else:
+                    # 如果是其他錯誤（如代碼不存在），就不重試了，直接放棄
+                    print(f"⚠️ 無法獲取 {symbol} 報價，原因: {error_msg}")
+                    break 
+        
+        # 該檔股票處理完畢，清除警告，推進進度條
+        warning_text.empty()
         progress_bar.progress((i + 1) / total)
-        time.sleep(0.02) 
+        
+        # 💡 【平穩巡航】：將基礎間隔拉長至 0.1 秒，讓連線更平滑，大幅降低被擋機率
+        time.sleep(0.3) 
         
     status_text.empty()
     progress_bar.empty()
